@@ -166,19 +166,96 @@ async function saveProspect(){
  alert("Prospek tersimpan.");await prospectPage();
 }
 async function orderPage(){
- const products=await sb.from("products").select("id,name").eq("active",true).order("name");
- const opts=(products.data||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
- $("content").innerHTML=`<div class="panel"><h2>Input SPK</h2><div class="row">
- <label>Nama Konsumen<input id="on"></label><label>Leasing<select id="ol"><option>FIF</option><option>OTO</option><option>Adira</option><option>Mandala</option><option>Cash</option></select></label>
- <label>Tipe Motor<select id="op"><option value="">Pilih motor</option>${opts}</select></label>
- <label>Unit<input id="ou" type="number" min="1" value="1"></label></div><button onclick="saveOrder()">Simpan SPK</button></div>`;
+ const products=await sb.from("products")
+   .select("id,name")
+   .eq("active",true)
+   .order("name");
+
+ const opts=(products.data||[])
+   .map(p=>`<option value="${p.id}">${p.name}</option>`)
+   .join("");
+
+ $("content").innerHTML=`
+ <div class="panel">
+   <h2>Input SPK</h2>
+
+   <div class="row">
+
+     <label>
+       Nama Konsumen
+       <input id="on" type="text" placeholder="Nama lengkap konsumen">
+     </label>
+
+     <label>
+       Leasing
+       <select id="ol">
+         <option>FIF</option>
+         <option>OTO</option>
+         <option>Adira</option>
+         <option>Mandala</option>
+         <option>Cash</option>
+       </select>
+     </label>
+
+     <label>
+       Tipe Motor
+       <select id="op">
+         <option value="">Pilih motor</option>
+         ${opts}
+       </select>
+     </label>
+
+     <label>
+       Unit
+       <input id="ou" type="number" min="1" value="1">
+     </label>
+
+   </div>
+
+   <label>
+     Alamat Konsumen
+     <textarea 
+       id="oa" 
+       rows="3"
+       placeholder="Masukkan alamat lengkap konsumen"
+     ></textarea>
+   </label>
+
+   <button onclick="saveOrder()">Simpan SPK</button>
+ </div>`;
 }
 async function saveOrder(){
- const name=$("on").value.trim(),product=$("op").value;if(!name)return alert("Nama konsumen wajib diisi.");
- if(!product)return alert("Pilih tipe motor.");
- const r=await sb.from("sales_orders").insert({sales_id:profile.sales_id,customer_name:name,product_id:product,leasing:$("ol").value,units:+$("ou").value||1});
- if(r.error)return alert("Gagal menyimpan SPK: "+r.error.message);
- alert("SPK tersimpan.");await orderPage();
+ const name=$("on").value.trim();
+ const address=$("oa").value.trim();
+ const product=$("op").value;
+ const units=+$("ou").value||1;
+
+ if(!name)
+   return alert("Nama konsumen wajib diisi.");
+
+ if(!address)
+   return alert("Alamat konsumen wajib diisi.");
+
+ if(!product)
+   return alert("Pilih tipe motor.");
+
+ if(units<1)
+   return alert("Jumlah unit minimal 1.");
+
+ const r=await sb.from("sales_orders").insert({
+   sales_id:profile.sales_id,
+   customer_name:name,
+   customer_address:address,
+   product_id:product,
+   leasing:$("ol").value,
+   units:units
+ });
+
+ if(r.error)
+   return alert("Gagal menyimpan SPK: "+r.error.message);
+
+ alert("SPK berhasil disimpan.");
+ await orderPage();
 }
 async function monitorPage(){
  const r=await sb.from("daily_activities").select("*,sales_people(name,code)").order("activity_date",{ascending:false});
