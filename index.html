@@ -166,63 +166,111 @@ async function saveProspect(){
  alert("Prospek tersimpan.");await prospectPage();
 }
 async function orderPage(){
- const products=await sb.from("products")
-   .select("id,name")
-   .eq("active",true)
-   .order("name");
+  const products=await sb.from("products")
+    .select("id,name")
+    .eq("active",true)
+    .order("name");
 
- const opts=(products.data||[])
-   .map(p=>`<option value="${p.id}">${p.name}</option>`)
-   .join("");
+  if(products.error){
+    return showError(products.error.message);
+  }
 
- $("content").innerHTML=`
- <div class="panel">
-   <h2>Input SPK</h2>
+  const opts=(products.data||[])
+    .map(p=>`<option value="${p.id}">${p.name}</option>`)
+    .join("");
 
-   <div class="row">
+  const orders=await sb.from("sales_orders")
+    .select("*,products(name)")
+    .eq("sales_id",profile.sales_id)
+    .order("created_at",{ascending:false})
+    .limit(30);
 
-     <label>
-       Nama Konsumen
-       <input id="on" type="text" placeholder="Nama lengkap konsumen">
-     </label>
+  const rows=orders.data||[];
 
-     <label>
-       Leasing
-       <select id="ol">
-         <option>FIF</option>
-         <option>OTO</option>
-         <option>Adira</option>
-         <option>Mandala</option>
-         <option>Cash</option>
-       </select>
-     </label>
+  $("content").innerHTML=`
+    <div class="panel">
+      <h2>Input SPK</h2>
 
-     <label>
-       Tipe Motor
-       <select id="op">
-         <option value="">Pilih motor</option>
-         ${opts}
-       </select>
-     </label>
+      <div class="row">
 
-     <label>
-       Unit
-       <input id="ou" type="number" min="1" value="1">
-     </label>
+        <label>
+          Nama Konsumen
+          <input id="on" type="text"
+            placeholder="Nama lengkap konsumen">
+        </label>
 
-   </div>
+        <label>
+          Leasing
+          <select id="ol">
+            <option>FIF</option>
+            <option>OTO</option>
+            <option>Adira</option>
+            <option>Mandala</option>
+            <option>Cash</option>
+          </select>
+        </label>
 
-   <label>
-     Alamat Konsumen
-     <textarea 
-       id="oa" 
-       rows="3"
-       placeholder="Masukkan alamat lengkap konsumen"
-     ></textarea>
-   </label>
+        <label>
+          Tipe Motor
+          <select id="op">
+            <option value="">Pilih motor</option>
+            ${opts}
+          </select>
+        </label>
 
-   <button onclick="saveOrder()">Simpan SPK</button>
- </div>`;
+        <label>
+          Unit
+          <input id="ou" type="number" min="1" value="1">
+        </label>
+
+      </div>
+
+      <label>
+        Alamat Konsumen
+        <textarea id="oa" rows="3"
+          placeholder="Masukkan alamat lengkap konsumen"></textarea>
+      </label>
+
+      <button onclick="saveOrder()">Simpan SPK</button>
+    </div>
+
+    <div class="panel">
+      <h2>Daftar SPK Saya</h2>
+
+      <div style="overflow-x:auto">
+        <table>
+          <tr>
+            <th>Tanggal</th>
+            <th>Konsumen</th>
+            <th>Alamat</th>
+            <th>Leasing</th>
+            <th>Motor</th>
+            <th>Unit</th>
+            <th>Status</th>
+          </tr>
+
+          ${
+            rows.map(x=>`
+              <tr>
+                <td>${x.order_date||"-"}</td>
+                <td><b>${x.customer_name||"-"}</b></td>
+                <td>${x.customer_address||"-"}</td>
+                <td>${x.leasing||"-"}</td>
+                <td>${x.products?.name||"-"}</td>
+                <td>${x.units||0}</td>
+                <td>${x.status||"SPK"}</td>
+              </tr>
+            `).join("")
+            ||
+            `<tr>
+              <td colspan="7">Belum ada SPK</td>
+            </tr>`
+          }
+
+        </table>
+      </div>
+    </div>
+  `;
 }
 async function saveOrder(){
  const name=$("on").value.trim();
