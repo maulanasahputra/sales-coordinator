@@ -37,9 +37,9 @@
 <main class="main"><div class="top"><div><h1 id="title">Dashboard</h1><div id="sub"></div></div><span id="status"></span></div><section id="content"></section></main></div>
 
 <script>
-const URL="https://lzkaebnhrtoktmiurtxy.supabase.co";
+const SUPABASE_URL="https://lzkaebnhrtoktmiurtxy.supabase.co";
 const KEY="sb_publishable_08GSTmzHg99-HtOyVh7tAQ_SQuksfiQ";
-const sb=window.supabase.createClient(URL,KEY);
+const sb=window.supabase.createClient(SUPABASE_URL,KEY);
 let user=null, profile=null, page="dashboard";
 const $=id=>document.getElementById(id);
 function msg(t,ok=false){$("loginMsg").innerHTML=`<div class="msg">${t}</div>`}
