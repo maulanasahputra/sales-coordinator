@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sales Coordinator Online</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f9;color:#172033}.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#111827,#2563eb)}.card{width:min(430px,92%);background:#fff;padding:28px;border-radius:18px;box-shadow:0 20px 60px #0004}.brand{font-size:25px;font-weight:800;margin-bottom:8px}input,select,textarea,button{width:100%;padding:11px;margin:6px 0;border:1px solid #d8dde6;border-radius:9px;font:inherit}button{border:0;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}.secondary{background:#e8eefc;color:#1d4ed8}.danger{background:#dc2626}.app{display:none}.side{position:fixed;inset:0 auto 0 0;width:240px;background:#111827;color:#fff;padding:20px 14px}.side h2{font-size:20px}.nav button{background:transparent;text-align:left;color:#dbe4f0}.nav button.active,.nav button:hover{background:#25324a}.main{margin-left:240px;padding:24px}.top{display:flex;justify-content:space-between;align-items:center}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat,.panel{background:#fff;border-radius:14px;padding:18px;box-shadow:0 3px 16px #0000000b}.panel{margin-top:16px}.num{font-size:28px;font-weight:800;margin-top:7px}.row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #edf0f4;text-align:left;font-size:13px}.msg{padding:10px;border-radius:8px;background:#eef5ff;margin:8px 0;line-height:1.45}.hidden{display:none!important}@media(max-width:800px){.side{position:static;width:100%;}.main{margin:0;padding:14px}.grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.nav{display:grid;grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body>
+<div id="login" class="login"><div class="card">
+<div class="brand">📊 Sales Coordinator Online</div>
+<div id="loginForm">
+<p>Login menggunakan akun Supabase.</p>
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button type="button" onclick="signIn()">Masuk</button>
+<button type="button" class="secondary" onclick="showSignup()">Buat akun baru</button>
+</div>
+
+<div id="signupForm" class="hidden">
+<p><b>Buat akun Sales</b></p>
+<input id="signupName" type="text" placeholder="Nama lengkap">
+<input id="signupEmail" type="email" placeholder="Email">
+<input id="signupPassword" type="password" placeholder="Password minimal 6 karakter">
+<select id="signupSales">
+<option value="">Pilih Sales</option>
+<option>Sales 1</option><option>Sales 2</option><option>Sales 3</option>
+<option>Sales 4</option><option>Sales 5</option><option>Sales 6</option>
+</select>
+<button type="button" onclick="signUp()">Daftar</button>
+<button type="button" class="secondary" onclick="showLogin()">Kembali ke Login</button>
+</div>
+<div id="loginMsg"></div></div></div>
+
+<div id="app" class="app"><aside class="side"><h2>SALES SYSTEM</h2><div id="who"></div><div class="nav" id="nav"></div><button class="danger" onclick="signOut()">Keluar</button></aside>
+<main class="main"><div class="top"><div><h1 id="title">Dashboard</h1><div id="sub"></div></div><span id="status"></span></div><section id="content"></section></main></div>
+
+<script>
+const URL="https://lzkaebnhrtoktmiurtxy.supabase.co";
+const KEY="sb_publishable_08GSTmzHg99-HtOyVh7tAQ_SQuksfiQ";
+const sb=window.supabase.createClient(URL,KEY);
+let user=null, profile=null, page="dashboard";
+const $=id=>document.getElementById(id);
+function msg(t,ok=false){$("loginMsg").innerHTML=`<div class="msg">${t}</div>`}
+function showSignup(){$("loginForm").classList.add("hidden");$("signupForm").classList.remove("hidden");$("loginMsg").innerHTML=""}
+function showLogin(){$("signupForm").classList.add("hidden");$("loginForm").classList.remove("hidden");$("loginMsg").innerHTML=""}
+async function signIn(){
+  const e=$("email").value.trim(),p=$("password").value;
+  if(!e||!p)return msg("Isi email dan password.");
+  const {data,error}=await sb.auth.signInWithPassword({email:e,password:p});
+  if(error)return msg(error.message);
+  user=data.user;await start();
+}
+async function signUp(){
+  const name=$("signupName").value.trim(),e=$("signupEmail").value.trim(),p=$("signupPassword").value, salesName=$("signupSales").value;
+  if(!name||!e||p.length<6||!salesName)return msg("Lengkapi nama, email, password minimal 6 karakter, dan pilihan Sales.");
+  const {data,error}=await sb.auth.signUp({email:e,password:p,options:{data:{full_name:name,sales_name:salesName}}});
+  if(error)return msg(error.message);
+  if(data.session){
+    msg("Akun berhasil dibuat. Menghubungkan ke sistem...",true);
+    user=data.user;await start();
+  }else{
+    msg("Akun berhasil dibuat. Silakan cek email untuk konfirmasi, lalu login kembali.");
+  }
+}
+async function signOut(){await sb.auth.signOut();location.reload()}
+async function start(){
+  let r=await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
+  if(r.error)return msg("Gagal membaca profil: "+r.error.message);
+  profile=r.data;
+  if(!profile){
+    return msg("Akun sudah aktif tetapi profil belum tersedia. Hubungi koordinator.");
+  }
+  $("login").style.display="none";$("app").style.display="block";render();
+}
+function nav(){let items=profile.role==="coordinator"?[["dashboard","Dashboard"],["monitor","Monitoring"],["target","Target"],["report","Laporan"]]:[["dashboard","Dashboard Saya"],["activity","Aktivitas Harian"],["prospect","Prospek"],["order","SPK / Delivery"]];$("nav").innerHTML=items.map(x=>`<button class="${page===x[0]?"active":""}" onclick="page='${x[0]}';render()">${x[1]}</button>`).join("")}
+async function render(){nav();$("who").textContent="👤 "+profile.full_name;$("sub").textContent=profile.role==="coordinator"?"Monitoring 6 Sales":"Input dan pantau aktivitas Anda";if(page==="activity")return activityPage();if(page==="prospect")return prospectPage();if(page==="order")return orderPage();if(page==="monitor")return monitorPage();if(page==="target")return targetPage();if(page==="report")return reportPage();return dashboard()}
+async function baseFilter(table){let q=sb.from(table).select("*");if(profile.role==="sales")q=q.eq("sales_id",profile.sales_id);return q}
+async function dashboard(){let q=await baseFilter("daily_activities");let a=q.data||[];let sum=k=>a.reduce((s,x)=>s+(+x[k]||0),0);$("content").innerHTML=`<div class="grid">${[["prospects_new","PROSPEK"],["followups","FOLLOW-UP"],["spk","SPK"],["deliveries","DELIVERY"]].map(x=>`<div class="stat">${x[1]}<div class="num">${sum(x[0])}</div></div>`).join("")}</div><div class="panel"><h2>Aktivitas Terbaru</h2>${activityTable(a)}</div>`}
+function activityTable(a){return `<table><tr><th>Tanggal</th><th>Sales ID</th><th>Prospek</th><th>Follow-up</th><th>SPK</th><th>Delivery</th></tr>${a.slice(-20).reverse().map(x=>`<tr><td>${x.activity_date}</td><td>${x.sales_id}</td><td>${x.prospects_new}</td><td>${x.followups}</td><td>${x.spk}</td><td>${x.deliveries}</td></tr>`).join("")||"<tr><td colspan=6>Belum ada data</td></tr>"}</table>`}
+async function activityPage(){$("content").innerHTML=`<div class="panel"><h2>Aktivitas Harian</h2><div class="row"><label>Tanggal<input id="ad" type="date" value="${new Date().toISOString().slice(0,10)}"></label><label>Prospek<input id="ap" type="number" value="0"></label><label>Follow-up<input id="af" type="number" value="0"></label><label>Kunjungan<input id="av" type="number" value="0"></label><label>Presentasi<input id="apr" type="number" value="0"></label><label>SPK<input id="as" type="number" value="0"></label><label>Delivery<input id="ade" type="number" value="0"></label></div><label>Kendala<textarea id="ao"></textarea></label><label>Rencana besok<textarea id="at"></textarea></label><button onclick="saveActivity()">Simpan</button></div>`}
+async function saveActivity(){const row={sales_id:profile.sales_id,activity_date:$("ad").value,prospects_new:+$("ap").value,followups:+$("af").value,visits:+$("av").value,presentations:+$("apr").value,spk:+$("as").value,deliveries:+$("ade").value,obstacles:$("ao").value,tomorrow_plan:$("at").value};let {error}=await sb.from("daily_activities").upsert(row,{onConflict:"sales_id,activity_date"});if(error)return alert(error.message);alert("Tersimpan ke database online.");page="dashboard";render()}
+async function prospectPage(){$("content").innerHTML=`<div class="panel"><h2>Tambah Prospek</h2><div class="row"><label>Nama Konsumen<input id="cn"></label><label>No. HP<input id="cp"></label><label>Sumber<input id="cs" placeholder="Walk-in / Referral / Sosmed"></label><label>Status<select id="cst"><option>baru</option><option>follow_up</option><option>hot</option><option>closing</option><option>lost</option></select></label></div><label>Catatan<textarea id="cnote"></textarea></label><button onclick="saveProspect()">Simpan Prospek</button></div>`}
+async function saveProspect(){let {error}=await sb.from("prospects").insert({sales_id:profile.sales_id,customer_name:$("cn").value,phone:$("cp").value,source:$("cs").value,status:$("cst").value,notes:$("cnote").value});if(error)return alert(error.message);alert("Prospek tersimpan.");prospectPage()}
+async function orderPage(){$("content").innerHTML=`<div class="panel"><h2>Input SPK</h2><div class="row"><label>Nama Konsumen<input id="on"></label><label>Leasing<select id="ol"><option>FIF</option><option>OTO</option><option>Adira</option><option>Mandala</option><option>Cash</option></select></label><label>Tipe Motor<input id="op"></label><label>Unit<input id="ou" type="number" value="1"></label></div><button onclick="saveOrder()">Simpan SPK</button></div>`}
+async function saveOrder(){let {error}=await sb.from("sales_orders").insert({sales_id:profile.sales_id,customer_name:$("on").value,leasing:$("ol").value,units:+$("ou").value});if(error)return alert(error.message);alert("SPK tersimpan.");orderPage()}
+async function monitorPage(){let {data}=await sb.from("daily_activities").select("*").order("activity_date",{ascending:false});$("content").innerHTML=`<div class="panel"><h2>Monitoring 6 Sales</h2>${activityTable(data||[])}</div>`}
+async function targetPage(){let {data}=await sb.from("targets").select("*");$("content").innerHTML=`<div class="panel"><h2>Target Penjualan</h2><table><tr><th>Sales</th><th>Periode</th><th>Target Unit</th><th>Leasing</th></tr>${(data||[]).map(x=>`<tr><td>${x.sales_id}</td><td>${x.period_start} s/d ${x.period_end}</td><td>${x.target_units}</td><td>${x.leasing}</td></tr>`).join("")||"<tr><td colspan=4>Belum ada target</td></tr>"}</table></div>`}
+async function reportPage(){$("content").innerHTML=`<div class="panel"><h2>Laporan</h2><p>Gunakan menu Monitoring untuk melihat aktivitas yang tersimpan. Modul export Excel/CSV dapat ditambahkan pada tahap berikutnya.</p></div>`}
+sb.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT")location.reload()});
+</script></body></html>
